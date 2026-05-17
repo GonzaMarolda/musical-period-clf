@@ -405,8 +405,8 @@ def print_summary(
 # --- Entry point -------------------------------------------------------------
 
 def main() -> None:
-    args = parse_args()
-
+    args = parse_args() 
+    
     # Silence noisy warnings from librosa/audioread on edge cases.
     warnings.filterwarnings("ignore", category=UserWarning)
     warnings.filterwarnings("ignore", category=FutureWarning)
@@ -415,31 +415,47 @@ def main() -> None:
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
 
     print("[1/4] Reading MAESTRO metadata...", flush=True)
+
+    # Carga el csv de maestro con la data de todas sus canciones
     meta = load_maestro_metadata(MAESTRO_DIR)
 
     print("[2/4] Building clean metadata...", flush=True)
+
+    # Limpia el csv: crea ids, le pone los paths completos y renombra el split a official_split (ya que es el split recomendado por maestro) 
     clean_df = build_clean_metadata(meta, MAESTRO_DIR)
+
     clean_path = INTERIM_DIR / "clean.csv"
     clean_df.to_csv(clean_path, index=False)
     print(f"      wrote {clean_path} ({len(clean_df)} rows)", flush=True)
 
     print("[3/4] Building labeled metadata...", flush=True)
+
+    # Carga el csv que mapea compositor a su periodo musical (solo están los mas representativos, los otros se descartan)
     composer_map = load_composer_map(COMPOSER_MAP_DIR)
+
+    # Hace un inner join entre el csv limpio y el csv del mapeo para quedarse solo con las filas que tienen compositores mapeados a periodo musical, y le agrega las columnas de periodo y periodo_id
     labeled_df = build_labeled_metadata(clean_df, composer_map)
+
     labeled_path = INTERIM_DIR / "labeled.csv"
     labeled_df.to_csv(labeled_path, index=False)
     print(f"      wrote {labeled_path} ({len(labeled_df)} rows)", flush=True)
 
     print("[4/4] Extracting audio + MIDI features...", flush=True)
+
+    # Aca ya hace el procesamiento de audio y midi
+    # Para cada fila del csv anterior, intenta extraer las features de audio y midi. Si falla alguna de las dos, llena las features de esa parte con NaNs pero sigue adelante igual. 
+    # Agrega una columna feature_status que dice si la extracción fue ok o si hubo error en audio, midi o ambos.
     final_df = build_final_dataset(
         labeled_df,
-        sample_rate=args.sample_rate,
-        window_seconds=args.audio_window_seconds,
+        sample_rate=args.sample_rate, # A que sample rate se hace la extracción de audio 
+        window_seconds=args.audio_window_seconds, # Cuanto tiempo se usa de cada canción, agarrando desde el medio
     )
+
     features_path = PROCESSED_DIR / "maestro_features.csv"
     final_df.to_csv(features_path, index=False)
     print(f"      wrote {features_path} ({len(final_df)} rows)", flush=True)
 
+    # Guarda la lista de columnas de features (sin metadata ni labels) para usar luego en el entrenamiento
     columns_path = save_feature_columns(PROCESSED_DIR)
     print(f"      wrote {columns_path}", flush=True)
 
