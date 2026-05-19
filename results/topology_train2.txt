@@ -1,0 +1,12 @@
+MusicPeriodMLP(
+  (network): Sequential(
+    (0): Linear(in_features=62, out_features=2, bias=True)
+    (1): Linear(in_features=2, out_features=3, bias=True)
+  )
+)
+
+--- Hyperparameters ---
+Epochs: 50
+Learning Rate: 0.001
+Batch Size: 32
+-----------------------
