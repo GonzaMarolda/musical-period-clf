@@ -2,3 +2,6 @@ numpy
 pandas
 librosa
 pretty_midi
+torch
+scikit-learn
+matplotlib
